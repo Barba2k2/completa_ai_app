@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/auth/presentation/screens/email_login_screen.dart';
@@ -19,8 +18,7 @@ import '../features/profile/presentation/screens/theme_settings_screen.dart';
 import '../features/scanner/presentation/screens/scanner_screen.dart';
 import 'app_routes.dart';
 
-final appRouterProvider = Provider<GoRouter>((ref) {
-  return GoRouter(
+final appRouter = GoRouter(
     initialLocation: AppRoutes.splash,
     debugLogDiagnostics: true,
     routes: [
@@ -103,10 +101,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const TermsOfUseScreen(),
       ),
     ],
-    errorBuilder: (context, state) => Scaffold(
-      body: Center(
-        child: Text('Route not found: ${state.uri}'),
-      ),
+  errorBuilder: (context, state) => Scaffold(
+    body: Center(
+      child: Text('Route not found: ${state.uri}'),
     ),
-  );
-});
+  ),
+);
