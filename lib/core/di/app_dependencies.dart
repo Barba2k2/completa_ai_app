@@ -10,15 +10,41 @@ import '../../features/home/controllers/sections_controller.dart';
 import '../../features/profile/controllers/profile_controller.dart';
 import '../../features/profile/controllers/profile_screen_controller.dart';
 import '../../features/profile/controllers/theme_controller.dart';
+import '../../shared/repositories/user_repository.dart';
+import '../../shared/services/analytics_service.dart';
+import '../../shared/services/crashlytics_service.dart';
+import '../../shared/services/user_api_service.dart';
 
 final getIt = GetIt.instance;
 
 void setupDependencies() {
-  getIt.registerLazySingleton<ApiClient>(() => ApiClient());
+  getIt.registerLazySingleton<AnalyticsService>(
+    () => AnalyticsService(),
+  );
 
-  getIt.registerLazySingleton<AuthController>(() => AuthController());
+  getIt.registerLazySingleton<CrashlyticsService>(
+    () => CrashlyticsService(),
+  );
 
-  getIt.registerLazySingleton<ThemeController>(() => ThemeController());
+  getIt.registerLazySingleton<ApiClient>(
+    () => ApiClient(),
+  );
+
+  getIt.registerLazySingleton<UserApiService>(
+    () => UserApiService(getIt<ApiClient>()),
+  );
+
+  getIt.registerLazySingleton<UserRepository>(
+    () => UserRepository(getIt<UserApiService>()),
+  );
+
+  getIt.registerLazySingleton<AuthController>(
+    () => AuthController(getIt<UserRepository>()),
+  );
+
+  getIt.registerLazySingleton<ThemeController>(
+    () => ThemeController(),
+  );
 
   getIt.registerLazySingleton<CollectionController>(
     () => CollectionController(getIt<ApiClient>()),
@@ -32,9 +58,13 @@ void setupDependencies() {
     () => StickersController(getIt<ApiClient>()),
   );
 
-  getIt.registerLazySingleton<HomeController>(() => HomeController());
+  getIt.registerLazySingleton<HomeController>(
+    () => HomeController(),
+  );
 
-  getIt.registerLazySingleton<ProfileController>(() => ProfileController());
+  getIt.registerLazySingleton<ProfileController>(
+    () => ProfileController(getIt<UserRepository>()),
+  );
 
   getIt.registerLazySingleton<ProfileScreenController>(
     () => ProfileScreenController(),
