@@ -7,6 +7,7 @@ import '../../../../core/di/app_dependencies.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../routing/app_routes.dart';
 import '../../controllers/profile_screen_controller.dart';
+import '../widgets/delete_account_button.dart';
 import '../widgets/logout_button.dart';
 import '../widgets/profile_header.dart';
 import '../widgets/profile_header_error.dart';
@@ -94,6 +95,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               SizedBox(height: 24.h),
               const LogoutButton(),
+              SizedBox(height: 8.h),
+              const DeleteAccountButton(),
             ],
           );
         },
