@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "694368900030",
+    "project_id": "completa-ai-d56df",
+    "storage_bucket": "completa-ai-d56df.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:694368900030:android:87d09675f0d461aa4fdfef",
+        "android_client_info": {
+          "package_name": "com.barbatech.completa_ai_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAj3nmo8cTTgtvbYvhjfsNzK8I72BFv48w"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:694368900030:android:97a94780e564c94e4fdfef",
+        "android_client_info": {
+          "package_name": "com.example.completa_ai_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAj3nmo8cTTgtvbYvhjfsNzK8I72BFv48w"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
