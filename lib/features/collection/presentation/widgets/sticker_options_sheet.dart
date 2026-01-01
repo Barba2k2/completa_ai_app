@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
-import '../../providers/stickers_provider.dart';
+import '../../../../core/di/app_dependencies.dart';
+import '../../controllers/collection_controller.dart';
 
-class StickerOptionsSheet extends ConsumerWidget {
+class StickerOptionsSheet extends StatelessWidget {
   const StickerOptionsSheet({
     super.key,
     required this.stickerId,
@@ -29,7 +29,9 @@ class StickerOptionsSheet extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
+    final collectionController = getIt<CollectionController>();
+
     return SafeArea(
       child: Padding(
         padding: EdgeInsets.symmetric(vertical: 16.h),
@@ -46,7 +48,7 @@ class StickerOptionsSheet extends ConsumerWidget {
                   Text(isOwned ? 'Remover da coleção' : 'Adicionar à coleção'),
               onTap: () {
                 Navigator.pop(context);
-                ref.read(stickerServiceProvider).toggleStickerOwned(stickerId);
+                collectionController.toggleStickerOwned(stickerId);
               },
             ),
             if (isOwned) ...[
@@ -55,7 +57,7 @@ class StickerOptionsSheet extends ConsumerWidget {
                 title: const Text('Adicionar repetida'),
                 onTap: () {
                   Navigator.pop(context);
-                  ref.read(stickerServiceProvider).incrementRepeated(stickerId);
+                  collectionController.incrementRepeated(stickerId);
                 },
               ),
               ListTile(
@@ -63,7 +65,7 @@ class StickerOptionsSheet extends ConsumerWidget {
                 title: const Text('Remover repetida'),
                 onTap: () {
                   Navigator.pop(context);
-                  ref.read(stickerServiceProvider).decrementRepeated(stickerId);
+                  collectionController.decrementRepeated(stickerId);
                 },
               ),
             ],
