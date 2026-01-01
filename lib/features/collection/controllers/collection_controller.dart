@@ -1,5 +1,6 @@
 import 'dart:developer';
 
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
 
 import '../../../core/network/api_client.dart';
@@ -42,8 +43,13 @@ class CollectionController extends ChangeNotifier {
     try {
       _stickers = await _apiService.getCollection();
       _lastSyncedAt = DateTime.now();
-    } catch (e) {
+    } catch (e, stack) {
       log('[CollectionController] Error loading: $e');
+      FirebaseCrashlytics.instance.recordError(
+        e,
+        stack,
+        reason: 'CollectionController.loadCollection',
+      );
       _error = e.toString();
     } finally {
       _isLoading = false;
@@ -64,8 +70,13 @@ class CollectionController extends ChangeNotifier {
         clientTime: DateTime.now(),
       );
       _lastSyncedAt = DateTime.now();
-    } catch (e) {
+    } catch (e, stack) {
       log('[CollectionController] Error syncing: $e');
+      FirebaseCrashlytics.instance.recordError(
+        e,
+        stack,
+        reason: 'CollectionController.syncCollection',
+      );
       _error = e.toString();
     } finally {
       _isSyncing = false;
@@ -143,8 +154,13 @@ class CollectionController extends ChangeNotifier {
   Future<void> _saveToApi() async {
     try {
       await _apiService.updateCollection(_toApiFormat());
-    } catch (e) {
+    } catch (e, stack) {
       log('[CollectionController] Error saving: $e');
+      FirebaseCrashlytics.instance.recordError(
+        e,
+        stack,
+        reason: 'CollectionController._saveToApi',
+      );
     }
   }
 }

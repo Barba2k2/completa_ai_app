@@ -4,11 +4,11 @@ import 'dart:math' hide log;
 
 import 'package:crypto/crypto.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
-import '../../../shared/models/user_profile.dart';
 import '../../../shared/repositories/user_repository.dart';
 import '../../../shared/services/firebase_service.dart';
 
@@ -21,7 +21,7 @@ class AuthController extends ChangeNotifier {
   bool _resetEmailSent = false;
   bool _splashCompleted = false;
 
-  AuthController() : _userRepository = UserRepository();
+  AuthController(this._userRepository);
 
   bool get isLoading => _isLoading;
   String? get error => _error;
@@ -94,8 +94,10 @@ class AuthController extends ChangeNotifier {
     const charset =
         '0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._';
     final random = Random.secure();
-    return List.generate(length, (_) => charset[random.nextInt(charset.length)])
-        .join();
+    return List.generate(
+      length,
+      (_) => charset[random.nextInt(charset.length)],
+    ).join();
   }
 
   String _sha256ofString(String input) {
@@ -123,21 +125,28 @@ class AuthController extends ChangeNotifier {
 
       final credential = GoogleAuthProvider.credential(idToken: idToken);
 
-      final userCredential =
-          await FirebaseService.auth.signInWithCredential(credential);
-
-      await _createOrUpdateUserProfile(userCredential.user);
+      await FirebaseService.auth.signInWithCredential(credential);
 
       return true;
-    } on GoogleSignInException catch (e) {
+    } on GoogleSignInException catch (e, stack) {
       if (e.code == GoogleSignInExceptionCode.canceled) {
         return false;
       }
       log('Google Sign-In error: ${e.code} - ${e.description}');
+      FirebaseCrashlytics.instance.recordError(
+        e,
+        stack,
+        reason: 'Google Sign-In',
+      );
       _error = 'Erro ao fazer login com Google';
       return false;
-    } catch (e) {
+    } catch (e, stack) {
       log('Google Sign-In error: $e');
+      FirebaseCrashlytics.instance.recordError(
+        e,
+        stack,
+        reason: 'Google Sign-In',
+      );
       _error = 'Erro ao fazer login com Google';
       return false;
     } finally {
@@ -174,21 +183,28 @@ class AuthController extends ChangeNotifier {
         rawNonce: rawNonce,
       );
 
-      final userCredential =
-          await FirebaseService.auth.signInWithCredential(oauthCredential);
-
-      await _createOrUpdateUserProfile(userCredential.user);
+      await FirebaseService.auth.signInWithCredential(oauthCredential);
 
       return true;
-    } on SignInWithAppleAuthorizationException catch (e) {
+    } on SignInWithAppleAuthorizationException catch (e, stack) {
       if (e.code == AuthorizationErrorCode.canceled) {
         return false;
       }
       log('Apple Sign-In error: ${e.code} - ${e.message}');
+      FirebaseCrashlytics.instance.recordError(
+        e,
+        stack,
+        reason: 'Apple Sign-In',
+      );
       _error = 'Erro ao fazer login com Apple';
       return false;
-    } catch (e) {
+    } catch (e, stack) {
       log('Apple Sign-In error: $e');
+      FirebaseCrashlytics.instance.recordError(
+        e,
+        stack,
+        reason: 'Apple Sign-In',
+      );
       _error = 'Erro ao fazer login com Apple';
       return false;
     } finally {
@@ -206,17 +222,19 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final userCredential =
-          await FirebaseService.auth.signInWithEmailAndPassword(
+      await FirebaseService.auth.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
 
-      await _createOrUpdateUserProfile(userCredential.user);
-
       return true;
-    } catch (e) {
+    } catch (e, stack) {
       log('Email Sign-In error: $e');
+      FirebaseCrashlytics.instance.recordError(
+        e,
+        stack,
+        reason: 'Email Sign-In',
+      );
       _error = getLoginErrorMessage(e);
       return false;
     } finally {
@@ -235,21 +253,24 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final userCredential =
-          await FirebaseService.auth.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
+      final userCredential = await FirebaseService.auth
+          .createUserWithEmailAndPassword(
+            email: email,
+            password: password,
+          );
 
       if (displayName != null && userCredential.user != null) {
         await userCredential.user!.updateDisplayName(displayName);
       }
 
-      await _createOrUpdateUserProfile(userCredential.user);
-
       return true;
-    } catch (e) {
+    } catch (e, stack) {
       log('Create Account error: $e');
+      FirebaseCrashlytics.instance.recordError(
+        e,
+        stack,
+        reason: 'Create Account',
+      );
       _error = getRegisterErrorMessage(e);
       return false;
     } finally {
@@ -268,8 +289,13 @@ class AuthController extends ChangeNotifier {
       await FirebaseService.auth.sendPasswordResetEmail(email: email);
       _resetEmailSent = true;
       return true;
-    } catch (e) {
+    } catch (e, stack) {
       log('Password Reset error: $e');
+      FirebaseCrashlytics.instance.recordError(
+        e,
+        stack,
+        reason: 'Password Reset',
+      );
       _error = getResetPasswordErrorMessage(e);
       return false;
     } finally {
@@ -287,27 +313,52 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> _createOrUpdateUserProfile(User? user) async {
-    if (user == null) return;
+  Future<bool> deleteAccount() async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
 
-    final existingProfile = await _userRepository.getUserProfile(user.uid);
+    try {
+      final user = currentUser;
+      if (user == null) {
+        _error = 'Usuário não encontrado';
+        return false;
+      }
 
-    if (existingProfile == null) {
-      final newProfile = UserProfile(
-        id: user.uid,
-        email: user.email,
-        displayName: user.displayName,
-        photoUrl: user.photoURL,
-        createdAt: DateTime.now(),
-        lastLoginAt: DateTime.now(),
+      final deleted = await _userRepository.deleteUserProfile();
+      if (!deleted) {
+        _error = 'Erro ao excluir dados do usuário';
+        return false;
+      }
+
+      await user.delete();
+
+      return true;
+    } on FirebaseAuthException catch (e, stack) {
+      log('Delete account error: $e');
+      FirebaseCrashlytics.instance.recordError(
+        e,
+        stack,
+        reason: 'Delete Account',
       );
-      await _userRepository.createUserProfile(newProfile);
-    } else {
-      await _userRepository.updateLoginWithProviderData(
-        userId: user.uid,
-        displayName: existingProfile.displayName ?? user.displayName,
-        photoUrl: existingProfile.photoUrl ?? user.photoURL,
+      if (e.code == 'requires-recent-login') {
+        _error = 'Por favor, faça login novamente para excluir sua conta';
+      } else {
+        _error = 'Erro ao excluir conta. Tente novamente';
+      }
+      return false;
+    } catch (e, stack) {
+      log('Delete account error: $e');
+      FirebaseCrashlytics.instance.recordError(
+        e,
+        stack,
+        reason: 'Delete Account',
       );
+      _error = 'Erro ao excluir conta. Tente novamente';
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
   }
 }

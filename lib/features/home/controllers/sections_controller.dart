@@ -1,5 +1,6 @@
 import 'dart:developer';
 
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
 
 import '../../../core/network/api_client.dart';
@@ -27,8 +28,13 @@ class SectionsController extends ChangeNotifier {
 
     try {
       _sections = await _apiService.getSections();
-    } catch (e) {
+    } catch (e, stack) {
       log('[SectionsController] Error loading: $e');
+      FirebaseCrashlytics.instance.recordError(
+        e,
+        stack,
+        reason: 'SectionsController.loadSections',
+      );
       _error = e.toString();
     } finally {
       _isLoading = false;

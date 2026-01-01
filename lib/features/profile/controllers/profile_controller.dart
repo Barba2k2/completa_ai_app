@@ -1,6 +1,7 @@
 import 'dart:developer';
 import 'dart:io';
 
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
@@ -19,9 +20,9 @@ class ProfileController extends ChangeNotifier {
   File? _selectedImage;
   bool _profileSaved = false;
 
-  ProfileController()
-      : _userRepository = UserRepository(),
-        _imagePicker = ImagePicker();
+  ProfileController(
+    this._userRepository,
+  ) : _imagePicker = ImagePicker();
 
   UserProfile? get profile => _profile;
   bool get isLoading => _isLoading;
@@ -78,8 +79,13 @@ class ProfileController extends ChangeNotifier {
         _selectedImage = null;
         _profileSaved = true;
       }
-    } catch (e) {
+    } catch (e, stack) {
       log('[ProfileController] Error saving profile: $e');
+      FirebaseCrashlytics.instance.recordError(
+        e,
+        stack,
+        reason: 'ProfileController.saveProfile',
+      );
       _error = 'Erro ao salvar perfil';
     } finally {
       _isLoading = false;
@@ -88,17 +94,19 @@ class ProfileController extends ChangeNotifier {
   }
 
   Future<void> loadProfile() async {
-    final userId = FirebaseService.currentUserId;
-    if (userId == null) return;
-
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
-      _profile = await _userRepository.getUserProfile(userId);
-    } catch (e) {
+      _profile = await _userRepository.getUserProfile();
+    } catch (e, stack) {
       log('[ProfileController] Error loading profile: $e');
+      FirebaseCrashlytics.instance.recordError(
+        e,
+        stack,
+        reason: 'ProfileController.loadProfile',
+      );
       _error = e.toString();
     } finally {
       _isLoading = false;
@@ -111,8 +119,9 @@ class ProfileController extends ChangeNotifier {
     if (userId == null) return null;
 
     try {
-      final ref =
-          FirebaseService.storage.ref().child('profile_images/$userId.jpg');
+      final ref = FirebaseService.storage.ref().child(
+        'profile_images/$userId.jpg',
+      );
 
       await ref.putFile(
         image,
@@ -120,8 +129,13 @@ class ProfileController extends ChangeNotifier {
       );
 
       return await ref.getDownloadURL();
-    } catch (e) {
+    } catch (e, stack) {
       log('[ProfileController] Error uploading image: $e');
+      FirebaseCrashlytics.instance.recordError(
+        e,
+        stack,
+        reason: 'ProfileController.uploadImage',
+      );
       return null;
     }
   }
@@ -131,29 +145,30 @@ class ProfileController extends ChangeNotifier {
     String? phoneNumber,
     String? photoUrl,
   }) async {
-    final userId = FirebaseService.currentUserId;
-    if (userId == null) return false;
-
     _isLoading = true;
     notifyListeners();
 
     try {
-      await _userRepository.updateProfileFields(
-        userId: userId,
+      final updatedProfile = await _userRepository.updateProfileFields(
         displayName: displayName,
         phoneNumber: phoneNumber,
         photoUrl: photoUrl,
       );
 
-      _profile = _profile?.copyWith(
-        displayName: displayName,
-        phoneNumber: phoneNumber,
-        photoUrl: photoUrl,
-      );
+      if (updatedProfile != null) {
+        _profile = updatedProfile;
+        return true;
+      }
 
-      return true;
-    } catch (e) {
+      _error = 'Erro ao atualizar perfil';
+      return false;
+    } catch (e, stack) {
       log('[ProfileController] Error updating profile: $e');
+      FirebaseCrashlytics.instance.recordError(
+        e,
+        stack,
+        reason: 'ProfileController.updateProfile',
+      );
       _error = e.toString();
       return false;
     } finally {
