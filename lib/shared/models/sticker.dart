@@ -1,5 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 class Sticker {
   final String id;
   final String number;
@@ -54,18 +52,6 @@ class Sticker {
       sectionId: json['sectionId'] as String,
       isOwned: json['isOwned'] as bool? ?? false,
       repeatedCount: json['repeatedCount'] as int? ?? 0,
-    );
-  }
-
-  factory Sticker.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
-    return Sticker(
-      id: doc.id,
-      number: data['number'] as String,
-      name: data['name'] as String,
-      sectionId: data['sectionId'] as String,
-      isOwned: data['isOwned'] as bool? ?? false,
-      repeatedCount: data['repeatedCount'] as int? ?? 0,
     );
   }
 

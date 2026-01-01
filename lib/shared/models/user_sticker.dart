@@ -1,5 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 class UserSticker {
   final String stickerId;
   final bool isOwned;
@@ -44,16 +42,6 @@ class UserSticker {
       updatedAt: json['updatedAt'] != null
           ? DateTime.parse(json['updatedAt'] as String)
           : null,
-    );
-  }
-
-  factory UserSticker.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
-    return UserSticker(
-      stickerId: doc.id,
-      isOwned: data['isOwned'] as bool? ?? false,
-      repeatedCount: data['repeatedCount'] as int? ?? 0,
-      updatedAt: (data['updatedAt'] as Timestamp?)?.toDate(),
     );
   }
 

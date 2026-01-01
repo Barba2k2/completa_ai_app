@@ -1,5 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 class UserProfile {
   final String id;
   final String? email;
@@ -74,21 +72,6 @@ class UserProfile {
       lastLoginAt: json['lastLoginAt'] != null
           ? DateTime.parse(json['lastLoginAt'] as String)
           : null,
-    );
-  }
-
-  factory UserProfile.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
-    return UserProfile(
-      id: doc.id,
-      email: data['email'] as String?,
-      displayName: data['displayName'] as String?,
-      photoUrl: data['photoUrl'] as String?,
-      phoneNumber: data['phoneNumber'] as String?,
-      totalOwned: data['totalOwned'] as int? ?? 0,
-      totalRepeated: data['totalRepeated'] as int? ?? 0,
-      createdAt: (data['createdAt'] as Timestamp).toDate(),
-      lastLoginAt: (data['lastLoginAt'] as Timestamp?)?.toDate(),
     );
   }
 

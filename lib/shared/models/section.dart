@@ -1,5 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 class Section {
   final String id;
   final String name;
@@ -48,17 +46,6 @@ class Section {
       imageUrl: json['imageUrl'] as String?,
       totalStickers: json['totalStickers'] as int,
       order: json['order'] as int,
-    );
-  }
-
-  factory Section.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
-    return Section(
-      id: doc.id,
-      name: data['name'] as String,
-      imageUrl: data['imageUrl'] as String?,
-      totalStickers: data['totalStickers'] as int,
-      order: data['order'] as int? ?? 0,
     );
   }
 
