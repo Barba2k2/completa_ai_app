@@ -1,32 +1,36 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_constants.dart';
-import '../../../../core/extensions/context_extensions.dart';
+import '../../../../core/di/app_dependencies.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../routing/app_routes.dart';
-import '../../../auth/providers/auth_provider.dart';
-import '../../../collection/providers/stickers_provider.dart';
-import '../../providers/sections_provider.dart';
+import '../../../../shared/services/firebase_service.dart';
+import '../../controllers/home_controller.dart';
 import '../widgets/progress_card.dart';
-import '../widgets/section_list_item.dart';
+import '../widgets/sections_list.dart';
 
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final sectionsAsync = ref.watch(sectionsProvider);
-    final userStickersAsync = ref.watch(userStickersProvider);
-    final userProfileAsync = ref.watch(userProfileProvider);
+  State<HomeScreen> createState() => _HomeScreenState();
+}
 
-    final userStickers = userStickersAsync.value ?? {};
-    final ownedCount = userStickers.values.where((s) => s.isOwned).length;
-    final repeatedCount = userStickers.values
-        .fold<int>(0, (sum, s) => sum + s.repeatedCount);
+class _HomeScreenState extends State<HomeScreen> {
+  final _controller = getIt<HomeController>();
+
+  @override
+  void initState() {
+    super.initState();
+    _controller.loadData();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final user = FirebaseService.currentUser;
 
     return Scaffold(
       appBar: AppBar(
@@ -37,119 +41,42 @@ class HomeScreen extends ConsumerWidget {
             onPressed: () {},
           ),
           IconButton(
-            icon: userProfileAsync.when(
-              data: (profile) {
-                if (profile?.photoUrl != null) {
-                  return CircleAvatar(
+            icon: user?.photoURL != null
+                ? CircleAvatar(
                     radius: 14.r,
-                    backgroundImage: NetworkImage(profile!.photoUrl!),
-                  );
-                }
-                return const Icon(Icons.person_outline_rounded);
-              },
-              loading: () => const Icon(Icons.person_outline_rounded),
-              error: (_, _) => const Icon(Icons.person_outline_rounded),
-            ),
+                    backgroundImage: NetworkImage(user!.photoURL!),
+                  )
+                : const Icon(
+                    Icons.person_outline_rounded,
+                  ),
             onPressed: () => context.push(AppRoutes.profile),
           ),
         ],
       ),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          ref.invalidate(sectionsProvider);
-          ref.invalidate(userStickersProvider);
+      body: ListenableBuilder(
+        listenable: _controller,
+        builder: (context, _) {
+          return RefreshIndicator(
+            onRefresh: _controller.loadData,
+            child: ListView(
+              padding: EdgeInsets.all(16.w),
+              children: [
+                ProgressCard(
+                  collected: _controller.collection.totalOwned,
+                  total: AppConstants.totalStickers,
+                  repeated: _controller.collection.totalRepeated,
+                ),
+                SizedBox(height: 24.h),
+                Text(
+                  'Seções',
+                  style: AppTextStyles.h4,
+                ),
+                SizedBox(height: 12.h),
+                SectionsList(controller: _controller),
+              ],
+            ),
+          );
         },
-        child: ListView(
-          padding: EdgeInsets.all(16.w),
-          children: [
-            ProgressCard(
-              collected: ownedCount,
-              total: AppConstants.totalStickers,
-              repeated: repeatedCount,
-            ),
-            SizedBox(height: 24.h),
-            Text(
-              'Seções',
-              style: AppTextStyles.h4,
-            ),
-            SizedBox(height: 12.h),
-            sectionsAsync.when(
-              data: (sections) {
-                if (sections.isEmpty) {
-                  return Center(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(vertical: 32.h),
-                      child: Column(
-                        children: [
-                          Icon(
-                            Icons.folder_outlined,
-                            size: 48.w,
-                            color: context.textTertiary,
-                          ),
-                          SizedBox(height: 8.h),
-                          Text(
-                            'Nenhuma seção encontrada',
-                            style: AppTextStyles.bodyMedium.copyWith(
-                              color: context.textSecondary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                }
-
-                return Column(
-                  children: sections.map((section) {
-                    final sectionStickersOwned = userStickers.entries
-                        .where((e) => e.value.isOwned)
-                        .length;
-
-                    return SectionListItem(
-                      title: section.name,
-                      code: section.id.substring(0, 3).toUpperCase(),
-                      collected: sectionStickersOwned,
-                      total: section.totalStickers,
-                      onTap: () => context.push(
-                        AppRoutes.section.replaceFirst(':sectionId', section.id),
-                      ),
-                    );
-                  }).toList(),
-                );
-              },
-              loading: () => Center(
-                child: Padding(
-                  padding: EdgeInsets.symmetric(vertical: 32.h),
-                  child: const CircularProgressIndicator(),
-                ),
-              ),
-              error: (error, _) => Center(
-                child: Padding(
-                  padding: EdgeInsets.symmetric(vertical: 32.h),
-                  child: Column(
-                    children: [
-                      Icon(
-                        Icons.error_outline_rounded,
-                        size: 48.w,
-                        color: context.colorScheme.error,
-                      ),
-                      SizedBox(height: 8.h),
-                      Text(
-                        'Erro ao carregar seções',
-                        style: AppTextStyles.bodyMedium,
-                      ),
-                      SizedBox(height: 8.h),
-                      TextButton(
-                        onPressed: () => ref.invalidate(sectionsProvider),
-                        child: const Text('Tentar novamente'),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => context.push(AppRoutes.scanner),
