@@ -12,7 +12,20 @@
           "package_name": "com.barbatech.completa_ai_app"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "694368900030-f67micekgdqfqhli3d7r3sipht3ufv8q.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.barbatech.completa_ai_app",
+            "certificate_hash": "22c474d349e78b2dca48208ea3c7055a2dd7114b"
+          }
+        },
+        {
+          "client_id": "694368900030-h2jluj9693mlpa9emfvl9ep0s500cgiv.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyAj3nmo8cTTgtvbYvhjfsNzK8I72BFv48w"
@@ -20,26 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
-        }
-      }
-    },
-    {
-      "client_info": {
-        "mobilesdk_app_id": "1:694368900030:android:97a94780e564c94e4fdfef",
-        "android_client_info": {
-          "package_name": "com.example.completa_ai_app"
-        }
-      },
-      "oauth_client": [],
-      "api_key": [
-        {
-          "current_key": "AIzaSyAj3nmo8cTTgtvbYvhjfsNzK8I72BFv48w"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "694368900030-h2jluj9693mlpa9emfvl9ep0s500cgiv.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "694368900030-satcg53cg226aknl95654c2lkep6b3mp.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.barbatech.completaAiApp"
+              }
+            }
+          ]
         }
       }
     }
