@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import '../config/app_config.dart';
 import 'api_exception.dart';
 import 'auth_interceptor.dart';
+import 'crashlytics_interceptor.dart';
 import 'logging_interceptor.dart';
 
 class ApiClient {
@@ -24,6 +25,7 @@ class ApiClient {
 
     _dio.interceptors.addAll([
       AuthInterceptor(),
+      CrashlyticsInterceptor(),
       LoggingInterceptor(),
     ]);
   }
