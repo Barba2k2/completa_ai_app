@@ -3,7 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../../../core/extensions/context_extensions.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_text_styles.dart';
+import 'stat_item.dart';
 
 class ProfileStatsCard extends StatelessWidget {
   const ProfileStatsCard({
@@ -28,7 +28,7 @@ class ProfileStatsCard extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _StatItem(
+          StatItem(
             value: ownedCount.toString(),
             label: 'Coletadas',
             color: AppColors.stickerOwned,
@@ -38,7 +38,7 @@ class ProfileStatsCard extends StatelessWidget {
             height: 40.h,
             color: context.border,
           ),
-          _StatItem(
+          StatItem(
             value: repeatedCount.toString(),
             label: 'Repetidas',
             color: AppColors.stickerRepeated,
@@ -48,44 +48,13 @@ class ProfileStatsCard extends StatelessWidget {
             height: 40.h,
             color: context.border,
           ),
-          _StatItem(
+          StatItem(
             value: '$progress%',
             label: 'Progresso',
             color: AppColors.primary,
           ),
         ],
       ),
-    );
-  }
-}
-
-class _StatItem extends StatelessWidget {
-  const _StatItem({
-    required this.value,
-    required this.label,
-    required this.color,
-  });
-
-  final String value;
-  final String label;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: AppTextStyles.h3.copyWith(color: color),
-        ),
-        SizedBox(height: 4.h),
-        Text(
-          label,
-          style: AppTextStyles.caption.copyWith(
-            color: context.textSecondary,
-          ),
-        ),
-      ],
     );
   }
 }

@@ -1,19 +1,19 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/di/app_dependencies.dart';
 import '../../../../core/extensions/context_extensions.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../routing/app_routes.dart';
-import '../../../auth/providers/auth_provider.dart';
+import '../../../auth/controllers/auth_controller.dart';
 
-class LogoutButton extends ConsumerWidget {
+class LogoutButton extends StatelessWidget {
   const LogoutButton({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     return TextButton.icon(
-      onPressed: () => _handleLogout(context, ref),
+      onPressed: () => _handleLogout(context),
       icon: Icon(
         Icons.logout_rounded,
         color: context.colorScheme.error,
@@ -27,7 +27,7 @@ class LogoutButton extends ConsumerWidget {
     );
   }
 
-  Future<void> _handleLogout(BuildContext context, WidgetRef ref) async {
+  Future<void> _handleLogout(BuildContext context) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -47,7 +47,7 @@ class LogoutButton extends ConsumerWidget {
     );
 
     if (confirmed == true && context.mounted) {
-      await ref.read(authServiceProvider).signOut();
+      await getIt<AuthController>().signOut();
       if (context.mounted) {
         context.go(AppRoutes.login);
       }
