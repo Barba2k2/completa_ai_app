@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../core/di/app_dependencies.dart';
 import '../features/auth/presentation/screens/email_login_screen.dart';
 import '../features/auth/presentation/screens/forgot_password_screen.dart';
 import '../features/auth/presentation/screens/login_screen.dart';
@@ -16,9 +17,11 @@ import '../features/profile/presentation/screens/profile_screen.dart';
 import '../features/profile/presentation/screens/terms_of_use_screen.dart';
 import '../features/profile/presentation/screens/theme_settings_screen.dart';
 import '../features/scanner/presentation/screens/scanner_screen.dart';
+import '../shared/services/analytics_service.dart';
 import 'app_routes.dart';
 
 final appRouter = GoRouter(
+    observers: [getIt<AnalyticsService>().observer],
     initialLocation: AppRoutes.splash,
     debugLogDiagnostics: true,
     routes: [
