@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CLIENT_ID</key>
+	<string>694368900030-satcg53cg226aknl95654c2lkep6b3mp.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.694368900030-satcg53cg226aknl95654c2lkep6b3mp</string>
+	<key>ANDROID_CLIENT_ID</key>
+	<string>694368900030-f67micekgdqfqhli3d7r3sipht3ufv8q.apps.googleusercontent.com</string>
+	<key>API_KEY</key>
+	<string>AIzaSyDlYjiy8gmA2pfC9V64TfXbYPuXJMt8pAE</string>
+	<key>GCM_SENDER_ID</key>
+	<string>694368900030</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.barbatech.completaAiApp</string>
+	<key>PROJECT_ID</key>
+	<string>completa-ai-d56df</string>
+	<key>STORAGE_BUCKET</key>
+	<string>completa-ai-d56df.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:694368900030:ios:21f830df1c4b58a64fdfef</string>
+</dict>
+</plist>
