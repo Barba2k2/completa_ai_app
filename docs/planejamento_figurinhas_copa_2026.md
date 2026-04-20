@@ -2,6 +2,7 @@
 
 > Documento de referência para modelagem de dados, telas e fluxo de organização de times e figurinhas especiais no app **completa_ai_app**.
 > Compilado a partir de fontes oficiais (Panini, FIFA, Coca-Cola) e de rumores/leaks em comunidades como Reddit, Fandom (Football Sticker Album Wiki), CardzReview Forums e imprensa esportiva.
+> **Alinhado com a arquitetura atual da branch `feat/firebase-config`**: feature-first + MVVM (`ChangeNotifier`), `get_it`, `dio`, `go_router`, Firebase.
 > Última atualização: abril/2026.
 
 ---
@@ -163,107 +164,215 @@ Fontes: Reddit (r/panini, r/soccer), **Football Sticker Album Wiki** (Fandom), *
 
 ---
 
-## 5. Modelagem de Dados Sugerida para o App
+## 5. Arquitetura Atual do App e Modelagem de Dados
 
-Baseada na estrutura acima, proposta de entidades em Dart/Flutter:
+### 5.1. Arquitetura em vigor (branch `feat/firebase-config`)
+
+O app adota **feature-first com MVVM** (Controllers baseados em `ChangeNotifier`), **não** Clean Architecture pura. Resumo da stack:
+
+| Camada | Implementação |
+|---|---|
+| State management | `ChangeNotifier` + `AnimatedBuilder`/`ListenableBuilder` nos widgets |
+| Injeção de dependência | `get_it` (`setupDependencies()` em `lib/core/di/app_dependencies.dart`, todos como `LazySingleton`) |
+| HTTP | `dio` via `ApiClient` (`lib/core/network/api_client.dart`) com `auth_interceptor`, `logging_interceptor`, `crashlytics_interceptor` e hierarquia de `*Exception` |
+| Roteamento | `go_router` (`lib/routing/app_router.dart` + `AppRoutes` como `abstract final class` de constantes) |
+| Persistência local | `shared_preferences` (hoje); backend próprio é a fonte de verdade |
+| Backend | API REST própria (`/collection`, `/collection/sync`, `/sections`, `/stickers`, `/users/...`) |
+| Firebase | Auth, Analytics, Crashlytics, Performance, Storage |
+| Auth social | `google_sign_in`, `sign_in_with_apple` |
+| Observabilidade | `AnalyticsService`, `CrashlyticsService`, `LoggingInterceptor`, `CrashlyticsInterceptor` |
+
+> Nota: `riverpod_generator` e `riverpod_lint` estão em `dev_dependencies`, mas **Riverpod não está nas deps principais** — sinal de migração futura ou experimento. Toda a base atual é `ChangeNotifier`.
+
+**Estrutura de pastas atual:**
+
+```
+lib/
+├── core/
+│   ├── config/          # app_config
+│   ├── constants/       # app_assets, app_constants
+│   ├── di/              # app_dependencies (get_it)
+│   ├── extensions/      # context_extensions, string_extensions
+│   ├── network/         # api_client + interceptors + exceptions
+│   └── theme/           # app_colors, app_text_styles, app_theme
+├── features/
+│   ├── auth/            (controllers + presentation/{screens,widgets})
+│   ├── collection/      (controllers + presentation/{screens,widgets})
+│   ├── home/
+│   ├── profile/         (inclui domain/enums/app_theme_mode)
+│   └── scanner/
+├── routing/             # app_router (go_router) + app_routes
+├── shared/
+│   ├── models/          # Section, Sticker, UserSticker, UserProfile
+│   ├── repositories/    # UserRepository
+│   └── services/        # *_api_service.dart + firebase_service, analytics, crashlytics
+├── firebase_options.dart
+└── main.dart
+```
+
+### 5.2. Modelos de domínio já existentes
+
+Antes de adicionar qualquer coisa nova, reaproveitar o que já está em `lib/shared/models/`:
 
 ```dart
-enum StickerMaterial { couche, metalizada }
-
-enum StickerCategory {
-  intro,         // troféu, logo, pôster, mascote, bola
-  hostCity,      // estádios e cidades
-  teamBadge,     // escudo (metalizada)
-  teamPhoto,     // foto oficial
-  player,        // jogadores das seleções
-  legend,        // Eternos 22
-  cocaCola,      // 12 exclusivas Coca-Cola
-  extra,         // extra stickers
+// lib/shared/models/section.dart
+class Section {
+  final String id;
+  final String name;
+  final String? imageUrl;
+  final int totalStickers;
+  final int order;
 }
 
-class Team {
-  final String code;          // ex: "BRA"
-  final String name;          // "Brasil"
-  final String group;         // "C"
-  final String pageNumber;    // página no álbum
-  final int firstStickerNumber;
-  final int lastStickerNumber; // firstStickerNumber + 19
-}
-
+// lib/shared/models/sticker.dart
 class Sticker {
-  final String number;           // "1", "FWC10", "CC1"
-  final StickerCategory category;
-  final StickerMaterial material;
-  final String? teamCode;        // null quando não for de time
-  final String? playerName;
-  final bool owned;
-  final int duplicates;
-  final bool fromCocaCola;       // true para as 12 especiais
+  final String id;
+  final String number;
+  final String name;
+  final String sectionId;
+  final bool isOwned;
+  final int repeatedCount;
+}
+
+// lib/shared/models/user_sticker.dart
+class UserSticker {
+  final String stickerId;
+  final bool isOwned;
+  final int repeatedCount;
+  final DateTime? updatedAt;
 }
 ```
 
+### 5.3. Extensões propostas (sem quebrar modelos existentes)
+
+As categorias e materiais do álbum 2026 **não existem** nos modelos atuais. Duas abordagens:
+
+**Opção A — Derivar de `Section` (preferida, zero mudança de schema):**
+Usar o `Section.id` ou um novo campo `Section.kind` no backend para diferenciar. Exemplo de `id`s convencionados:
+
+| Section.id | Significado | totalStickers |
+|---|---|---|
+| `intro` | Abertura (troféu, logo, pôster, mascote, bola) | ~20 |
+| `host-cities` | 16 cidades-sede | ~32 |
+| `legends` | Eternos 22 | 9 |
+| `coca-cola` | 12 exclusivas Coca-Cola | 12 |
+| `team-BRA`, `team-ARG`, ... | Página de cada seleção | 20 |
+| `extras` | Extra Stickers | a definir |
+
+**Opção B — Adicionar enums no app (se o backend não distinguir):**
+
+```dart
+// lib/features/collection/domain/sticker_kind.dart
+enum StickerMaterial { couche, metalizada }
+
+enum StickerCategory {
+  intro, hostCity, teamBadge, teamPhoto, player,
+  legend, cocaCola, extra,
+}
+
+extension StickerKindX on Sticker {
+  StickerCategory categoryFromNumber() { /* regras por prefixo de number */ }
+  StickerMaterial materialFromNumber() { /* 68 metalizadas conhecidas */ }
+}
+```
+
+Recomendação: **começar pela Opção A**, manter a distinção no backend, e só adicionar enums no app se o design precisar (ícone de "metalizada", filtro por categoria etc.).
+
+### 5.4. Nova entidade sugerida: `Team` (opcional)
+
+Hoje não há modelo de seleção. Se a tela de "Grupos A–L" for implementada:
+
+```dart
+// lib/shared/models/team.dart
+class Team {
+  final String code;           // "BRA"
+  final String name;           // "Brasil"
+  final String group;          // "C"
+  final String sectionId;      // referência para Section do time
+  final String? flagAssetPath;
+}
+```
+
+Pode viver como seed local (`assets/data/teams_2026.json`) até o backend expor `/teams`.
+
 ---
 
-## 6. Fluxo de Organização no App
+## 6. Fluxo de Organização no App (aderente às telas/rotas atuais)
 
-### 6.1. Tela Home
-- Barra de progresso global (`X / 980`).
-- Cards rápidos: **Especiais metalizadas (0/68)**, **Coca-Cola (0/12)**, **Legends (0/9)**, **Sedes (0/32)**.
-- Lista de seleções agrupadas por **Grupo A→L** com % de conclusão.
+Rotas já existentes em `lib/routing/app_routes.dart`: `home`, `collection`, `section` (`/collection/:sectionId`), `search`, `scanner`, `share`, `profile` e variações.
 
-### 6.2. Tela de Grupo
+### 6.1. Home (`AppRoutes.home` — `HomeScreen` + `HomeController`/`SectionsController`)
+- Barra de progresso global (`X / 980`) via `CollectionController.totalOwned`.
+- `ProgressCard` por seção destacada: **Especiais metalizadas (0/68)**, **Coca-Cola (0/12)**, **Legends — Eternos 22 (0/9)**, **Sedes (0/32)**.
+- `SectionsList` agrupando seções de times por **Grupo A→L** (cabeçalho de grupo + % de conclusão por time).
+
+### 6.2. Tela de Grupo (novo sub-fluxo dentro de Home)
 - Mostra os 4 times do grupo + progresso individual.
-- Atalho para comparar figurinhas repetidas entre times do mesmo grupo (útil para troca local).
+- Atalho para comparar figurinhas repetidas entre times do mesmo grupo (troca local).
+- Implementar como filtro em `SectionsController` ou tela dedicada `GroupDetailScreen`.
 
-### 6.3. Tela de Seleção
-- Página idêntica ao layout do álbum: **escudo + foto + 18 jogadores**.
-- Toque em figurinha alterna estados: **tenho / faltando / repetida (+N)**.
-- Destaque visual para escudo (metalizada).
+### 6.3. Detalhe de Seção / Time (`AppRoutes.section` — `SectionDetailScreen` + `SectionDetailController`/`StickersController`)
+- Para time: layout **escudo + foto + 18 jogadores** (reusa `StickerGridItem`).
+- Toque em figurinha abre `StickerOptionsSheet`: **tenho / faltando / repetida (+N)**.
+- Destaque visual para escudo e demais metalizadas (ícone/borda).
 
-### 6.4. Tela "Especiais"
-Subdividida em:
-1. Abertura / Intro
-2. Host Cities
-3. Legends — Eternos 22
-4. Coca-Cola (com instruções de como obter via rótulo de garrafa)
-5. Extras
+### 6.4. "Especiais" como conjunto de Sections
+Reaproveitar `SectionDetailScreen` para cada section com `id` específico:
+1. `intro` — abertura
+2. `host-cities`
+3. `legends`
+4. `coca-cola` (incluir texto explicando que só sai em garrafas Coca-Cola)
+5. `extras`
 
-### 6.5. Tela de Trocas
-- Lista automática das **repetidas** (dup ≥ 2) vs **faltando**.
-- Compartilhar lista como imagem/texto (WhatsApp, Telegram) — formato compatível com grupos de troca.
+### 6.5. Trocas (`AppRoutes.share` — **ainda sem controller específico**)
+- Lista automática das **repetidas** (`repeatedCount >= 1`) vs **faltando** (`!isOwned`) derivada de `CollectionController.stickers`.
+- Compartilhar lista como imagem/texto (WhatsApp, Telegram).
 - Filtro por grupo, por seleção, por tipo (só metalizadas, só comuns).
+- Sugestão: criar `ShareController extends ChangeNotifier` em `features/share/controllers/` e registrar no `get_it`.
 
-### 6.6. Tela de Estatísticas
-- Custo estimado para completar (configurável: preço do pacote, chance de repetir).
-- Projeção: "faltam ~N pacotes para completar com base na taxa atual de repetidas".
+### 6.6. Scanner (`AppRoutes.scanner` — `ScannerScreen` já existente)
+- Item de backlog alinhado: OCR da numeração da figurinha → atualizar `UserSticker` via `CollectionController.updateSticker`.
+
+### 6.7. Estatísticas (novo — sugestão)
+- Custo estimado para completar (configurável).
+- Projeção: "faltam ~N pacotes com base na taxa atual de repetidas".
+- Pode morar dentro de `ProfileScreen` (já há `ProfileStatsCard`) ou em `features/collection/presentation/screens/stats_screen.dart`.
 
 ---
 
 ## 7. Plano de Implementação (fases)
 
-### Fase 1 — Fundação (sprint 1)
-- Criar modelos `Team`, `Sticker`, `StickerCategory`, `StickerMaterial`.
-- Seed inicial com os **48 times** e **12 grupos** já sorteados.
-- Placeholder para figurinhas especiais (intro, hosts, legends, Coca-Cola) com **numeração provisória** marcada como `isProvisional: true`.
-- Armazenamento local (Hive / Isar / SQLite).
+> O app já tem a base de arquitetura, DI, roteamento, Firebase e modelos `Section`/`Sticker`/`UserSticker`. As fases abaixo focam no conteúdo de Copa 2026, **não** em reconstruir a infraestrutura.
 
-### Fase 2 — UX principal (sprint 2)
-- Telas: Home, Grupo, Seleção, Detalhe da figurinha.
-- Marcação rápida de tenho/repetida.
-- Cálculo de % por seção e global.
+### Fase 1 — Seed de conteúdo 2026
+- Definir `Section`s no backend para: `intro`, `host-cities`, `legends`, `coca-cola`, `team-XXX` (48) e `extras`.
+- Alimentar `/sections` e `/stickers` com números provisórios marcados por convenção (ex.: sufixo `-prov` no `number`).
+- Popular assets locais: `assets/data/teams_2026.json` (48 times, grupo, `sectionId`) e flags em `assets/images/flags/`.
 
-### Fase 3 — Especiais e trocas (sprint 3)
-- Página dedicada para Eternos 22, Coca-Cola, Sedes.
-- Fluxo de troca (exportar lista).
+### Fase 2 — Grupos A–L na Home
+- Estender `SectionsController` (ou criar `GroupsController`) para agrupar sections de time por `Team.group`.
+- Novo widget `GroupHeader` + reuso de `SectionListItem`.
+- (Opcional) `GroupDetailScreen` como rota nova em `AppRoutes`.
 
-### Fase 4 — Atualização pós-oficial (sprint 4)
-- Quando a Panini publicar o checklist numerado definitivo: substituir IDs provisórios pelos reais via **migração de dados** (manter correspondência via `slug` estável, ex.: `BRA-01`, `LEGEND-MESSI`).
-- Adicionar a seção de **Extra Stickers** oficial.
+### Fase 3 — Destaques das "Especiais"
+- Cards fixos na Home para `intro`, `host-cities`, `legends`, `coca-cola` (usando `ProgressCard`).
+- Tela de Coca-Cola com aviso explicativo ("só em garrafas").
+- Ícone/borda para figurinhas metalizadas em `StickerGridItem`.
 
-### Fase 5 — Social / Gamificação (backlog)
-- Scan de figurinha via câmera (OCR do número).
+### Fase 4 — Trocas (`/share`)
+- Criar `features/share/controllers/share_controller.dart` (`ChangeNotifier`).
+- Registrar no `setupDependencies()` como `LazySingleton`.
+- Listar repetidas × faltando a partir de `CollectionController.stickers`.
+- Export como texto/imagem compartilhável.
+
+### Fase 5 — Atualização pós-checklist oficial
+- Quando a Panini publicar o checklist numerado: migração no backend substituindo `number` provisório pelo oficial; `Sticker.id` permanece estável.
+- Adicionar seção `extras` (Extra Stickers) conforme Panini divulgar.
+
+### Fase 6 — Social / Gamificação (backlog)
+- OCR de número via `ScannerScreen`.
 - Grupos de troca por região.
-- Conquistas por seleção completa, grupo completo, metalizadas etc.
+- Conquistas (seleção completa, grupo completo, 68 metalizadas etc.) via `AnalyticsService` + UI.
 
 ---
 
